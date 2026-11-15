@@ -31,6 +31,7 @@ for year in year_range:
 
 # out_df.to_html('../pages/summary_table.html')
 out_df.sort_values(by='Precinct #')
+out_df.to_csv('summary_table.csv')
 clean_fmt = lambda x: f'{x:.2f}'.rstrip('0').rstrip('.') if pd.notnull(x) else ''
 # html_output = out_df.style.background_gradient(cmap="bwr", subset=list(year_range)).to_html(float_format=clean_fmt)
 html_output = (
