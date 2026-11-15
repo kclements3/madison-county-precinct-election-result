@@ -39,7 +39,7 @@
 <body>
 
     <header>
-        <h1>Welcome to My Website</h1>
+        <h1>Madison County Precinct-Level Polling Results</h1>
         <nav>
             <ul>
                 <li><a href="index.html">Home</a></li>
@@ -51,9 +51,18 @@
     </header>
 
     <main>
-        <h2>Main Page Content</h2>
-        <p>This is the main landing page. Use the links above to explore the sub-pages of this site.</p>
+        <h2>Results by precinct for Governors races (2022 and 2026) and Presidential race (2020 and 2024)</h2>
     </main>
+    <div id="header-placeholder"></div>
+
+    <script>
+      fetch('pages/summary_table.html')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('header-placeholder').innerHTML = data;
+        })
+        .catch(error => console.error('Error loading HTML:', error));
+    </script>
 
 </body>
 </html>

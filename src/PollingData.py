@@ -10,8 +10,15 @@ class PollingData:
         self.year = year
         self.polling_location_file = polling_location_file
         self.results_file = results_file
-        self.shape_data = gpd.read_file(shapefile_path)
+        # self.shape_data = gpd.read_file(shapefile_path)
 
+        if year < 2024:
+            self.shape_data = gpd.read_file(shapefile_path)
+            self.shape_data = self.shape_data.loc[self.shape_data['COUNTYFP20'] == '089']
+            self.shape_data['PrecNum'] = self.shape_data['VTDST20'].apply(lambda x: int(x))
+            self.shape_data['PlaceNam'] = self.shape_data['NAMELSAD20']
+        else:
+            self.shape_data = gpd.read_file(shapefile_path)
         self.polling_place_map = {}
         self.df1 = None
 
@@ -45,6 +52,14 @@ class PollingData:
                 if 'OXR' in name:
                     newname=name.replace('OXR', 'Owens Cross Roads')
                     match_dict[pNum][pName].append((name, SequenceMatcher(None, newname.lower(), pName.lower()).ratio()))
+                elif 'PROVISIONAL' in name or 'ABSENTEE' in name:
+                    continue
+                elif 'VFD' in name:
+                    newname = name.replace('VFD', 'Volunteer Fire Department')
+                    match_dict[pNum][pName].append((name, SequenceMatcher(None, newname.lower(), pName.lower()).ratio()))
+                elif 'MONTE SANO' in name:
+                    newname = "Monte Sano United Methodist Church"
+                    match_dict[pNum][pName].append((name, SequenceMatcher(None, newname.lower(), pName.lower()).ratio()))
                 else:
                     match_dict[pNum][pName].append((name, SequenceMatcher(None, name.lower(), pName.lower()).ratio()))
 
@@ -67,18 +82,23 @@ class PollingData:
 
     def determine_dem_rep_pct(self, contest, primaryFlag=False):
         df2 = self.df1.loc[self.df1['Contest Title']== contest]
-        # df2_dem = self.df1.loc[self.df1['Contest Title'] == contest]
+        precinct_data = pd.DataFrame(columns=['PrecNum', 'Name', 'pct_repub'])
         for precinct_name in list(self.df1.columns[3:]):
             if precinct_name not in self.polling_place_map:
                 print(f'No match found for {precinct_name}')
                 continue
             else:
                 precinct_num = self.polling_place_map[precinct_name]
-            ind = self.shape_data[self.shape_data['PrecNum'] == precinct_num].index
+            ind = self.shape_data[self.shape_data['PrecNum'].astype(int) == int(precinct_num)].index
             totalDemVotes = df2.loc[df2['Party'] == 'DEM', precinct_name].iloc[0]
             totalRepVotes = df2.loc[df2['Party'] == 'REP', precinct_name].iloc[0]
             self.shape_data.loc[ind, 'pct_repub'] = totalRepVotes / (totalDemVotes+totalRepVotes) * 100
-        self.shape_data[['PlaceNam', 'PrecNum', 'pct_repub']].to_csv(f'voting_data_{contest}_{self.year}.csv')
+
+            new_row = pd.DataFrame([{"PrecNum": precinct_num, "Name": precinct_name, "pct_repub":totalRepVotes / (totalDemVotes+totalRepVotes) * 100}])
+            precinct_data = pd.concat([precinct_data, new_row])
+        precinct_data.to_csv(f'voting_data_{contest}_{self.year}.csv', index=False)
+        return precinct_data
+        # self.shape_data[['PlaceNam', 'PrecNum', 'pct_repub']].to_csv(f'voting_data_{contest}_{self.year}.csv', index=False)
 
     def plot_data(self, contest):
         # data = gpd.read_file(shapefile)
@@ -143,8 +163,8 @@ class PollingData:
 
 if __name__ == "__main__":
     year = 2026
-    polling_location_file = '../data/precinct-numbers/2026-Polling-Locations-Madison-County-.pdf'
-    results_file = '../data/madison-county-votes/2026_GENERAL_ELECTION-MADISON.xls'
+    polling_location_file = '../data/precinct-numbers/2026-Polling-Locations.pdf'
+    results_file = '../data/madison-county-votes/2026-General-Madison.xls'
     shapefile_path = '../data/shapefiles/precincts_2026_rev2.shp'
     pollingData = PollingData(year, polling_location_file, results_file, shapefile_path)
     pollingData.match_polling_places()
